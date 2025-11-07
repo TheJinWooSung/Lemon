@@ -1,0 +1,35 @@
+/**
+ * Lightweight Express server to:
+ *  - serve built client in production
+ *  - provide simple proxy / helper endpoints for the client in dev
+ *
+ * In dev we only use this to avoid CORS issues. The client calls /api/* endpoints here,
+ * and this server proxies to the Flask backend (http://localhost:5000).
+ */
+
+const express = require("express");
+const path = require("path");
+const imageRouter = require("./image");
+const statusRouter = require("./status");
+
+const app = express();
+app.use(express.json());
+
+// API routes used by the client
+app.use("/api/image", imageRouter);
+app.use("/api/status", statusRouter);
+
+// In production serve the built client
+const clientDist = path.join(__dirname, "..", "client", "dist");
+app.use(express.static(clientDist));
+app.get("*", (req, res) => {
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({ error: "API route not found" });
+  }
+  res.sendFile(path.join(clientDist, "index.html"));
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`[frontend] express server listening on ${PORT}`);
+});
